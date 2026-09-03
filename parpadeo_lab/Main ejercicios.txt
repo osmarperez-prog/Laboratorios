@@ -1,0 +1,569 @@
+Ejercicio corto 1 
+int
+main(void)
+{
+    uint32_t ui32SysClock;
+
+    ui32SysClock = SysCtlClockFreqSet(
+        SYSCTL_XTAL_25MHZ |
+        SYSCTL_OSC_MAIN |
+        SYSCTL_USE_PLL |
+        SYSCTL_CFG_VCO_480,
+        120000000
+    );
+
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPION);
+
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPION))
+    {
+    }
+
+    GPIOPinTypeGPIOOutput(
+        GPIO_PORTN_BASE,
+        GPIO_PIN_0 | GPIO_PIN_1
+    );
+
+    while(1)
+    {
+        // Encender PN0.
+        GPIOPinWrite(
+            GPIO_PORTN_BASE,
+            GPIO_PIN_0,
+            GPIO_PIN_0
+        );
+
+        SysCtlDelay(ui32SysClock / 3);
+
+        // Encender PN1.
+        GPIOPinWrite(
+            GPIO_PORTN_BASE,
+            GPIO_PIN_1,
+            GPIO_PIN_1
+        );
+
+        SysCtlDelay(ui32SysClock / 3);
+
+        // Apagar ambos LED.
+        GPIOPinWrite(
+            GPIO_PORTN_BASE,
+            GPIO_PIN_0 | GPIO_PIN_1,
+            0x00
+        );
+
+        SysCtlDelay(ui32SysClock / 3);
+    }
+}
+Ejercicio corto 2
+int
+main(void)
+{
+    uint32_t ui32SysClock;
+
+    ui32SysClock = SysCtlClockFreqSet(
+        SYSCTL_XTAL_25MHZ |
+        SYSCTL_OSC_MAIN |
+        SYSCTL_USE_PLL |
+        SYSCTL_CFG_VCO_480,
+        120000000
+    );
+
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPION);
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
+
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPION))
+    {
+    }
+
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOF))
+    {
+    }
+
+    GPIOPinTypeGPIOOutput(
+        GPIO_PORTN_BASE,
+        GPIO_PIN_0 | GPIO_PIN_1
+    );
+
+    GPIOPinTypeGPIOOutput(
+        GPIO_PORTF_BASE,
+        GPIO_PIN_0 | GPIO_PIN_4
+    );
+
+    while(1)
+    {
+        // Encender PN0 y PF0.
+        GPIOPinWrite(
+            GPIO_PORTN_BASE,
+            GPIO_PIN_0,
+            GPIO_PIN_0
+        );
+
+        GPIOPinWrite(
+            GPIO_PORTF_BASE,
+            GPIO_PIN_0,
+            GPIO_PIN_0
+        );
+
+        SysCtlDelay(ui32SysClock / 3);
+
+        // Encender PN1 y PF4.
+        GPIOPinWrite(
+            GPIO_PORTN_BASE,
+            GPIO_PIN_1,
+            GPIO_PIN_1
+        );
+
+        GPIOPinWrite(
+            GPIO_PORTF_BASE,
+            GPIO_PIN_4,
+            GPIO_PIN_4
+        );
+
+        SysCtlDelay(ui32SysClock / 3);
+
+        // Apagar PN0 y PF0.
+        GPIOPinWrite(GPIO_PORTN_BASE, GPIO_PIN_0, 0x00);
+        GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_0, 0x00);
+
+        SysCtlDelay(ui32SysClock / 3);
+
+        // Apagar PN1 y PF4.
+        GPIOPinWrite(GPIO_PORTN_BASE, GPIO_PIN_1, 0x00);
+        GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_4, 0x00);
+
+        SysCtlDelay(ui32SysClock / 3);
+    }
+}
+Ejercicio corto 3
+int
+main(void)
+{
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPION);
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOJ);
+
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPION))
+    {
+    }
+
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOJ))
+    {
+    }
+
+    GPIOPinTypeGPIOOutput(
+        GPIO_PORTN_BASE,
+        GPIO_PIN_1
+    );
+
+    GPIOPinTypeGPIOInput(
+        GPIO_PORTJ_BASE,
+        GPIO_PIN_1
+    );
+
+    GPIOPadConfigSet(
+        GPIO_PORTJ_BASE,
+        GPIO_PIN_1,
+        GPIO_STRENGTH_2MA,
+        GPIO_PIN_TYPE_STD_WPU
+    );
+
+    while(1)
+    {
+        // PJ1 devuelve 0 cuando está presionado.
+        if(GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1) == 0)
+        {
+            GPIOPinWrite(
+                GPIO_PORTN_BASE,
+                GPIO_PIN_1,
+                GPIO_PIN_1
+            );
+        }
+        else
+        {
+            GPIOPinWrite(
+                GPIO_PORTN_BASE,
+                GPIO_PIN_1,
+                0x00
+            );
+        }
+    }
+}
+ejercicio largo 1
+int
+main(void)
+{
+    uint32_t ui32SysClock;
+    uint32_t ui32Level = 0;
+    uint32_t ui32LedN;
+    uint32_t ui32LedF;
+
+    ui32SysClock = SysCtlClockFreqSet(
+        SYSCTL_XTAL_25MHZ |
+        SYSCTL_OSC_MAIN |
+        SYSCTL_USE_PLL |
+        SYSCTL_CFG_VCO_480,
+        120000000
+    );
+
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPION);
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOJ);
+
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPION))
+    {
+    }
+
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOF))
+    {
+    }
+
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOJ))
+    {
+    }
+
+    GPIOPinTypeGPIOOutput(
+        GPIO_PORTN_BASE,
+        GPIO_PIN_0 | GPIO_PIN_1
+    );
+
+    GPIOPinTypeGPIOOutput(
+        GPIO_PORTF_BASE,
+        GPIO_PIN_0 | GPIO_PIN_4
+    );
+
+    GPIOPinTypeGPIOInput(
+        GPIO_PORTJ_BASE,
+        GPIO_PIN_0 | GPIO_PIN_1
+    );
+
+    GPIOPadConfigSet(
+        GPIO_PORTJ_BASE,
+        GPIO_PIN_0 | GPIO_PIN_1,
+        GPIO_STRENGTH_2MA,
+        GPIO_PIN_TYPE_STD_WPU
+    );
+
+    GPIOPinWrite(
+        GPIO_PORTN_BASE,
+        GPIO_PIN_0 | GPIO_PIN_1,
+        0x00
+    );
+
+    GPIOPinWrite(
+        GPIO_PORTF_BASE,
+        GPIO_PIN_0 | GPIO_PIN_4,
+        0x00
+    );
+
+    while(1)
+    {
+        // SW1: aumentar la cantidad de LED encendidos.
+        if(GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_0) == 0)
+        {
+            SysCtlDelay(ui32SysClock / 150);
+
+            if(GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_0) == 0)
+            {
+                if(ui32Level < 4)
+                {
+                    ui32Level++;
+                }
+
+                while(GPIOPinRead(
+                    GPIO_PORTJ_BASE,
+                    GPIO_PIN_0
+                ) == 0)
+                {
+                }
+            }
+        }
+        // SW2: disminuir la cantidad de LED encendidos.
+        else if(GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1) == 0)
+        {
+            SysCtlDelay(ui32SysClock / 150);
+
+            if(GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1) == 0)
+            {
+                if(ui32Level > 0)
+                {
+                    ui32Level--;
+                }
+
+                while(GPIOPinRead(
+                    GPIO_PORTJ_BASE,
+                    GPIO_PIN_1
+                ) == 0)
+                {
+                }
+            }
+        }
+
+        ui32LedN = 0;
+        ui32LedF = 0;
+
+        if(ui32Level >= 1)
+        {
+            ui32LedN |= GPIO_PIN_0;
+        }
+
+        if(ui32Level >= 2)
+        {
+            ui32LedN |= GPIO_PIN_1;
+        }
+
+        if(ui32Level >= 3)
+        {
+            ui32LedF |= GPIO_PIN_0;
+        }
+
+        if(ui32Level >= 4)
+        {
+            ui32LedF |= GPIO_PIN_4;
+        }
+
+        GPIOPinWrite(
+            GPIO_PORTN_BASE,
+            GPIO_PIN_0 | GPIO_PIN_1,
+            ui32LedN
+        );
+
+        GPIOPinWrite(
+            GPIO_PORTF_BASE,
+            GPIO_PIN_0 | GPIO_PIN_4,
+            ui32LedF
+        );
+    }
+}
+Ejercicio Largo 2
+int
+main(void)
+{
+    uint32_t ui32SysClock;
+
+    ui32SysClock = SysCtlClockFreqSet(
+        SYSCTL_XTAL_25MHZ |
+        SYSCTL_OSC_MAIN |
+        SYSCTL_USE_PLL |
+        SYSCTL_CFG_VCO_480,
+        120000000
+    );
+
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPION);
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
+
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPION))
+    {
+    }
+
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOF))
+    {
+    }
+
+    GPIOPinTypeGPIOOutput(
+        GPIO_PORTN_BASE,
+        GPIO_PIN_0 | GPIO_PIN_1
+    );
+
+    GPIOPinTypeGPIOOutput(
+        GPIO_PORTF_BASE,
+        GPIO_PIN_0 | GPIO_PIN_4
+    );
+
+    while(1)
+    {
+        // Estado 1: PN0.
+        GPIOPinWrite(
+            GPIO_PORTN_BASE,
+            GPIO_PIN_0 | GPIO_PIN_1,
+            GPIO_PIN_0
+        );
+
+        GPIOPinWrite(
+            GPIO_PORTF_BASE,
+            GPIO_PIN_0 | GPIO_PIN_4,
+            0x00
+        );
+
+        SysCtlDelay(2 * (ui32SysClock / 3));
+
+        // Estado 2: PN0 y PN1.
+        GPIOPinWrite(
+            GPIO_PORTN_BASE,
+            GPIO_PIN_0 | GPIO_PIN_1,
+            GPIO_PIN_0 | GPIO_PIN_1
+        );
+
+        GPIOPinWrite(
+            GPIO_PORTF_BASE,
+            GPIO_PIN_0 | GPIO_PIN_4,
+            0x00
+        );
+
+        SysCtlDelay(2 * (ui32SysClock / 3));
+
+        // Estado 3: PN0, PN1 y PF0.
+        GPIOPinWrite(
+            GPIO_PORTN_BASE,
+            GPIO_PIN_0 | GPIO_PIN_1,
+            GPIO_PIN_0 | GPIO_PIN_1
+        );
+
+        GPIOPinWrite(
+            GPIO_PORTF_BASE,
+            GPIO_PIN_0 | GPIO_PIN_4,
+            GPIO_PIN_0
+        );
+
+        SysCtlDelay(2 * (ui32SysClock / 3));
+
+        // Estado 4: los cuatro LED.
+        GPIOPinWrite(
+            GPIO_PORTN_BASE,
+            GPIO_PIN_0 | GPIO_PIN_1,
+            GPIO_PIN_0 | GPIO_PIN_1
+        );
+
+        GPIOPinWrite(
+            GPIO_PORTF_BASE,
+            GPIO_PIN_0 | GPIO_PIN_4,
+            GPIO_PIN_0 | GPIO_PIN_4
+        );
+
+        SysCtlDelay(2 * (ui32SysClock / 3));
+    }
+}
+Ejercicio largo 3
+int
+main(void)
+{
+    uint32_t ui32SysClock;
+    uint32_t ui32LedN;
+    uint32_t ui32LedF;
+    int counter = 0;
+
+    ui32SysClock = SysCtlClockFreqSet(
+        SYSCTL_XTAL_25MHZ |
+        SYSCTL_OSC_MAIN |
+        SYSCTL_USE_PLL |
+        SYSCTL_CFG_VCO_480,
+        120000000
+    );
+
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPION);
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOJ);
+
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPION))
+    {
+    }
+
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOF))
+    {
+    }
+
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOJ))
+    {
+    }
+
+    GPIOPinTypeGPIOOutput(
+        GPIO_PORTN_BASE,
+        GPIO_PIN_0 | GPIO_PIN_1
+    );
+
+    GPIOPinTypeGPIOOutput(
+        GPIO_PORTF_BASE,
+        GPIO_PIN_0 | GPIO_PIN_4
+    );
+
+    GPIOPinTypeGPIOInput(
+        GPIO_PORTJ_BASE,
+        GPIO_PIN_0 | GPIO_PIN_1
+    );
+
+    GPIOPadConfigSet(
+        GPIO_PORTJ_BASE,
+        GPIO_PIN_0 | GPIO_PIN_1,
+        GPIO_STRENGTH_2MA,
+        GPIO_PIN_TYPE_STD_WPU
+    );
+
+    while(1)
+    {
+        // SW1/PJ0 incrementa.
+        if(GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_0) == 0)
+        {
+            SysCtlDelay(ui32SysClock / 150);
+
+            if(GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_0) == 0)
+            {
+                if(counter < 15)
+                {
+                    counter++;
+                }
+
+                while(GPIOPinRead(
+                    GPIO_PORTJ_BASE,
+                    GPIO_PIN_0
+                ) == 0)
+                {
+                }
+            }
+        }
+        // SW2/PJ1 decrementa.
+        else if(GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1) == 0)
+        {
+            SysCtlDelay(ui32SysClock / 150);
+
+            if(GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1) == 0)
+            {
+                if(counter > 0)
+                {
+                    counter--;
+                }
+
+                while(GPIOPinRead(
+                    GPIO_PORTJ_BASE,
+                    GPIO_PIN_1
+                ) == 0)
+                {
+                }
+            }
+        }
+
+        // Bits 0 y 1 en PN0 y PN1.
+        ui32LedN = 0;
+
+        if((counter & 0x01) != 0)
+        {
+            ui32LedN |= GPIO_PIN_0;
+        }
+
+        if((counter & 0x02) != 0)
+        {
+            ui32LedN |= GPIO_PIN_1;
+        }
+
+        // Bits 2 y 3 en PF0 y PF4.
+        ui32LedF = 0;
+
+        if((counter & 0x04) != 0)
+        {
+            ui32LedF |= GPIO_PIN_0;
+        }
+
+        if((counter & 0x08) != 0)
+        {
+            ui32LedF |= GPIO_PIN_4;
+        }
+
+        GPIOPinWrite(
+            GPIO_PORTN_BASE,
+            GPIO_PIN_0 | GPIO_PIN_1,
+            ui32LedN
+        );
+
+        GPIOPinWrite(
+            GPIO_PORTF_BASE,
+            GPIO_PIN_0 | GPIO_PIN_4,
+            ui32LedF
+        );
+    }
+}
