@@ -1,0 +1,108 @@
+#include <stdint.h>
+#include <stdbool.h>
+#include "inc/hw_memmap.h"
+#include "inc/hw_ints.h"
+#include "driverlib/debug.h"
+#include "driverlib/gpio.h"
+#include "driverlib/sysctl.h"
+#include "driverlib/timer.h"
+#include "driverlib/interrupt.h"
+
+#ifdef DEBUG
+void __error__(char *pcFilename, uint32_t ui32Line)
+{
+    while(1);
+}
+#endif
+
+uint32_t FS = 120000000 * 2;
+volatile uint8_t counter = 0;
+
+void timer0A_handler(void)
+{
+    TimerIntClear(TIMER0_BASE, TIMER_TIMA_TIMEOUT);
+
+    counter++;
+    if(counter > 9)
+    {
+        counter = 0;
+    }
+
+    switch(counter)
+    {
+        case 0: // 0000
+            GPIOPinWrite(GPIO_PORTN_BASE, 0x03, 0x00);
+            GPIOPinWrite(GPIO_PORTF_BASE, 0x11, 0x00);
+            break;
+        case 1: // 0001
+            GPIOPinWrite(GPIO_PORTN_BASE, 0x03, 0x00);
+            GPIOPinWrite(GPIO_PORTF_BASE, 0x11, 0x01);
+            break;
+        case 2: // 0010
+            GPIOPinWrite(GPIO_PORTN_BASE, 0x03, 0x00);
+            GPIOPinWrite(GPIO_PORTF_BASE, 0x11, 0x10);
+            break;
+        case 3: // 0011
+            GPIOPinWrite(GPIO_PORTN_BASE, 0x03, 0x00);
+            GPIOPinWrite(GPIO_PORTF_BASE, 0x11, 0x11);
+            break;
+        case 4: // 0100
+            GPIOPinWrite(GPIO_PORTN_BASE, 0x03, 0x01);
+            GPIOPinWrite(GPIO_PORTF_BASE, 0x11, 0x00);
+            break;
+        case 5: // 0101
+            GPIOPinWrite(GPIO_PORTN_BASE, 0x03, 0x01);
+            GPIOPinWrite(GPIO_PORTF_BASE, 0x11, 0x01);
+            break;
+        case 6: // 0110
+            GPIOPinWrite(GPIO_PORTN_BASE, 0x03, 0x01);
+            GPIOPinWrite(GPIO_PORTF_BASE, 0x11, 0x10);
+            break;
+        case 7: // 0111
+            GPIOPinWrite(GPIO_PORTN_BASE, 0x03, 0x01);
+            GPIOPinWrite(GPIO_PORTF_BASE, 0x11, 0x11);
+            break;
+        case 8: // 1000
+            GPIOPinWrite(GPIO_PORTN_BASE, 0x03, 0x02);
+            GPIOPinWrite(GPIO_PORTF_BASE, 0x11, 0x00);
+            break;
+        case 9: // 1001
+            GPIOPinWrite(GPIO_PORTN_BASE, 0x03, 0x02);
+            GPIOPinWrite(GPIO_PORTF_BASE, 0x11, 0x01);
+            break;
+    }
+}
+
+int main(void)
+{
+    SysCtlClockFreqSet((SYSCTL_XTAL_25MHZ | SYSCTL_OSC_MAIN | 
+                         SYSCTL_USE_PLL | SYSCTL_CFG_VCO_480), 120000000);
+
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPION);
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER0);
+
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPION) || 
+          !SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOF) || 
+          !SysCtlPeripheralReady(SYSCTL_PERIPH_TIMER0))
+    {
+    }
+
+    GPIOPinTypeGPIOOutput(GPIO_PORTN_BASE, 0x03);
+    GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, 0x11);
+
+    GPIOPinWrite(GPIO_PORTN_BASE, 0x03, 0x00);
+    GPIOPinWrite(GPIO_PORTF_BASE, 0x11, 0x00);
+
+    TimerConfigure(TIMER0_BASE, TIMER_CFG_PERIODIC);
+    TimerLoadSet(TIMER0_BASE, TIMER_A, FS);
+
+    IntMasterEnable();
+    IntEnable(INT_TIMER0A);
+    TimerIntEnable(TIMER0_BASE, TIMER_TIMA_TIMEOUT);
+    TimerEnable(TIMER0_BASE, TIMER_A);
+
+    while(1)
+    {
+    }
+}
