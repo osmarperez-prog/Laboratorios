@@ -12,38 +12,35 @@
 #include "driverlib/sysctl.h"
 #include "driverlib/pwm.h"
 #include "driverlib/uart.h"
-#include "driverlib/timer.h"
-#include "driverlib/interrupt.h"
 #include "utils/uartstdio.c"
 
 //*****************************************************************************
-// VARIABLES GLOBALES
+// VARIABLES GLOBALES (Memoria del Vehículo)
 //*****************************************************************************
 uint32_t ui32SysClock;
 char data[100];
 
-// Estados Motores y Velocidad PWM (Periodo = 60000 ticks)
+// Memoria de Motores y Velocidad
 bool estado_m1 = false;
 bool estado_m2 = false;
-uint32_t ancho_pulso_actual = 45000; // Valor inicial al 75% (45000 / 60000)
+uint32_t ancho_pulso_actual = 45000; // 75% de 60000
 
-// Estados Buzzer y Emergencia
-const uint32_t frecuencia = 2000;
+// Memoria de Luces y Buzzer (Para restaurar estado)
+bool estado_g1 = false;
+bool estado_g2 = false;
+bool sonando = false;
+
+// Bandera de Bloqueo
 volatile bool emergencia = false;
-volatile bool sonando = false;
-volatile uint8_t nivel = 0x00;
 
 //*****************************************************************************
-// FUNCION CASERA PARA COMPARAR TEXTO (REEMPLAZO DE STRCMP)
+// FUNCION CASERA PARA COMPARAR TEXTO
 //*****************************************************************************
 bool comparar_cadenas(const char *cadena1, const char *cadena2)
 {
     while (*cadena1 != '\0' && *cadena2 != '\0')
     {
-        if (*cadena1 != *cadena2)
-        {
-            return false;
-        }
+        if (*cadena1 != *cadena2) return false;
         cadena1++;
         cadena2++;
     }
@@ -63,46 +60,22 @@ void error(char *pcFilename, uint32_t ui32Line)
 //*****************************************************************************
 // FUNCIONES DEL BUZZER
 //*****************************************************************************
-void timer0A_handler(void)
-{
-    TimerIntClear(TIMER0_BASE, TIMER_TIMA_TIMEOUT);
-
-    if (sonando && !emergencia)
-    {
-        nivel = nivel ^ 0x01; // Alterna entre 0 y 1
-        GPIOPinWrite(GPIO_PORTL_BASE, 0x01, nivel); // Pin PL0
-    }
-    else
-    {
-        nivel = 0x00;
-        GPIOPinWrite(GPIO_PORTL_BASE, 0x01, 0x00);
-    }
-}
-
 void apagar_buzzer(void)
 {
     sonando = false;
-    TimerDisable(TIMER0_BASE, TIMER_A);
-    TimerIntClear(TIMER0_BASE, TIMER_TIMA_TIMEOUT);
-    IntPendClear(INT_TIMER0A);
-    nivel = 0x00;
-    GPIOPinWrite(GPIO_PORTL_BASE, 0x01, 0x00);
+    if(!emergencia)
+    {
+        PWMPulseWidthSet(PWM0_BASE, PWM_OUT_5, 1); // 1 tick = Silencio
+    }
 }
 
 void encender_buzzer(void)
 {
-    if (emergencia)
-    {
-        return;
-    }
-
-    apagar_buzzer();
-
-    // Cargar nuevo periodo para el tono
-    TimerLoadSet(TIMER0_BASE, TIMER_A, (ui32SysClock / (2 * frecuencia)) - 1);
-
     sonando = true;
-    TimerEnable(TIMER0_BASE, TIMER_A);
+    if(!emergencia)
+    {
+        PWMPulseWidthSet(PWM0_BASE, PWM_OUT_5, 30000); // 30000 ticks = 50% volumen
+    }
 }
 
 //*****************************************************************************
@@ -110,11 +83,10 @@ void encender_buzzer(void)
 //*****************************************************************************
 int main(void)
 {
-    // Deshabilitar interrupciones
     IntMasterDisable();
 
 //*****************************************************************************
-// HABILITAR CLOCK
+// HABILITAR CLOCK (120 MHz)
 //*****************************************************************************
     ui32SysClock = SysCtlClockFreqSet((SYSCTL_XTAL_25MHZ |
                                        SYSCTL_OSC_MAIN |
@@ -122,64 +94,51 @@ int main(void)
                                        SYSCTL_CFG_VCO_480), 120000000);
 
 //*****************************************************************************
-// HABILITAR PERIFERICOS
+// HABILITAR PERIFERICOS (Eliminado TIMER0)
 //*****************************************************************************
     SysCtlPeripheralEnable(SYSCTL_PERIPH_UART0);
     while(!SysCtlPeripheralReady(SYSCTL_PERIPH_UART0)) {}
 
-    SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER0);
-    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_TIMER0)) {}
-
-    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
-    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOA)) {}
-
     SysCtlPeripheralEnable(SYSCTL_PERIPH_PWM0);
     while(!SysCtlPeripheralReady(SYSCTL_PERIPH_PWM0)) {}
 
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
-    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOF)) {}
-
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOG);
-    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOG)) {}
-
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOL);
-    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOL)) {}
-
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPION);
-    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPION)) {}
-
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOP);
-    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOP)) {}
 
 
 //*****************************************************************************
 // CONFIGURAR PINES Y COMUNICACIONES
 //*****************************************************************************
-    // Configuración UART0  
+// Configuración UART0
+
     GPIOPinConfigure(GPIO_PA0_U0RX);
     GPIOPinConfigure(GPIO_PA1_U0TX);
     GPIOPinTypeUART(GPIO_PORTA_BASE, 0x03);
     UARTStdioConfig(0, 9600, 120000000);
 
-    // Configuración PWM0
+// Configuración PWM0 (Motores y Buzzer)
     GPIOPinConfigure(GPIO_PF1_M0PWM1);
-    GPIOPinTypePWM(GPIO_PORTF_BASE, 0x02); // PF1
+    GPIOPinTypePWM(GPIO_PORTF_BASE, 0x02); // PF1 (Motor 1)
 
     GPIOPinConfigure(GPIO_PG0_M0PWM4);
-    GPIOPinTypePWM(GPIO_PORTG_BASE, 0x01); // PG0
+    GPIOPinConfigure(GPIO_PG1_M0PWM5);     // PG1 (Buzzer - Rescatado del Datasheet)
+    GPIOPinTypePWM(GPIO_PORTG_BASE, 0x03); // 0x03 habilita PG0 y PG1
 
-
-    // Configuración GPIO Salidas
+// Configuración GPIO Salidas
     GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, 0x1D); // PF0, PF2, PF3, PF4
     GPIOPinTypeGPIOOutput(GPIO_PORTN_BASE, 0x0F); // PN0, PN1, PN2, PN3
-    GPIOPinTypeGPIOOutput(GPIO_PORTL_BASE, 0x31); // PL4, PL5 (M2 Dir) + PL0 (Buzzer)
-    GPIOPinTypeGPIOOutput(GPIO_PORTP_BASE, 0x04); // PP2 (Luces G2)
-    GPIOPinTypeGPIOOutput(GPIO_PORTA_BASE, 0x80); // PA7 (Luces G2)
+    GPIOPinTypeGPIOOutput(GPIO_PORTL_BASE, 0x30); // PL4, PL5 (PL0 eliminado)
+    GPIOPinTypeGPIOOutput(GPIO_PORTP_BASE, 0x04); // PP2
+    GPIOPinTypeGPIOOutput(GPIO_PORTA_BASE, 0x80); // PA7
+
 
 //*****************************************************************************
-// CONFIGURAR PWM (Motores) Y TIMER (Buzzer)
+// CONFIGURAR PWM (Motores y Buzzer unificados a 2 kHz)
 //*****************************************************************************
-    // Generadores PWM a 2 kHz (60,000 ticks)
     PWMGenConfigure(PWM0_BASE, PWM_GEN_0, PWM_GEN_MODE_DOWN | PWM_GEN_MODE_NO_SYNC);
     PWMGenPeriodSet(PWM0_BASE, PWM_GEN_0, 60000);
 
@@ -188,62 +147,51 @@ int main(void)
 
     PWMGenEnable(PWM0_BASE, PWM_GEN_0);
     PWMGenEnable(PWM0_BASE, PWM_GEN_2);
-    PWMOutputState(PWM0_BASE, (PWM_OUT_1_BIT | PWM_OUT_4_BIT), true);
+// Habilitar salidas 1 (M1), 4 (M2) y 5 (Buzzer)
+    PWMOutputState(PWM0_BASE, (PWM_OUT_1_BIT | PWM_OUT_4_BIT | PWM_OUT_5_BIT), true);
 
-
-    // Timer0 para el Buzzer
-    TimerDisable(TIMER0_BASE, TIMER_A);
-    TimerConfigure(TIMER0_BASE, TIMER_CFG_PERIODIC);
-    TimerLoadSet(TIMER0_BASE, TIMER_A, (ui32SysClock / (2 * frecuencia)) - 1);
-    TimerIntRegister(TIMER0_BASE, TIMER_A, timer0A_handler);
-    TimerIntClear(TIMER0_BASE, TIMER_TIMA_TIMEOUT);
-    TimerIntEnable(TIMER0_BASE, TIMER_TIMA_TIMEOUT);
-    IntPrioritySet(INT_TIMER0A, 0x80);
 
 //*****************************************************************************
 // INICIALIZAR ESTADOS FÍSICOS
 //*****************************************************************************
-    // Direccion Motores Adelante y Buzzer Apagado
-    GPIOPinWrite(GPIO_PORTF_BASE, 0x0C, 0x04); // PF3=0, PF2=1
-    GPIOPinWrite(GPIO_PORTL_BASE, 0x31, 0x20); // PL4=0, PL5=1, PL0=0
+// Direccion Motores Adelante
+    GPIOPinWrite(GPIO_PORTF_BASE, 0x0C, 0x04); //0000 1100 C
+                                               //0000 0100 4
+    GPIOPinWrite(GPIO_PORTL_BASE, 0x30, 0x20);
 
-    // Motores al 0% mecanico
+// PWMs al 0% mecanico / silencio
     PWMPulseWidthSet(PWM0_BASE, PWM_OUT_1, 1);
     PWMPulseWidthSet(PWM0_BASE, PWM_OUT_4, 1);
+    PWMPulseWidthSet(PWM0_BASE, PWM_OUT_5, 1);
 
-    // Luces Apagadas
+// Luces Apagadas
     GPIOPinWrite(GPIO_PORTN_BASE, 0x0F, 0x00);
     GPIOPinWrite(GPIO_PORTF_BASE, 0x11, 0x00);
     GPIOPinWrite(GPIO_PORTP_BASE, 0x04, 0x00);
     GPIOPinWrite(GPIO_PORTA_BASE, 0x80, 0x00);
 
-    // Habilitar Interrupciones Generales
-    apagar_buzzer();
     IntMasterEnable();
+
 
 //*****************************************************************************
 // BUCLE INFINITO
 //*****************************************************************************
     while(1)
     {
-        // Se pausa aquí esperando comando desde Raspberry
         UARTgets(data, 100);
 
 // ================= PARADA DE EMERGENCIA =================
         if(comparar_cadenas(data, "E"))
         {
             emergencia = !emergencia;
-            apagar_buzzer();
 
             if(emergencia)
             {
-                // Cortar potencia a motores
+            // APAGAR TODO FÍSICAMENTE (SIN BORRAR LA MEMORIA)
                 PWMPulseWidthSet(PWM0_BASE, PWM_OUT_1, 1);
                 PWMPulseWidthSet(PWM0_BASE, PWM_OUT_4, 1);
-                estado_m1 = false;
-                estado_m2 = false;
+                PWMPulseWidthSet(PWM0_BASE, PWM_OUT_5, 1); // Silencia buzzer
 
-                // Apagar todas las luces y LEDs indicadores
                 GPIOPinWrite(GPIO_PORTN_BASE, 0x0F, 0x00);
                 GPIOPinWrite(GPIO_PORTF_BASE, 0x11, 0x00);
                 GPIOPinWrite(GPIO_PORTP_BASE, 0x04, 0x00);
@@ -253,17 +201,41 @@ int main(void)
             }
             else
             {
+            // RESTAURAR ESTADOS DESDE LA MEMORIA
+                if(estado_m1)
+                {
+                    PWMPulseWidthSet(PWM0_BASE, PWM_OUT_1, ancho_pulso_actual);
+                    GPIOPinWrite(GPIO_PORTN_BASE, 0x03, 0x03);
+                }
+                if(estado_m2)
+                {
+                    PWMPulseWidthSet(PWM0_BASE, PWM_OUT_4, ancho_pulso_actual);
+                    GPIOPinWrite(GPIO_PORTF_BASE, 0x11, 0x11);
+                }
+                if(estado_g1)
+                {
+                    GPIOPinWrite(GPIO_PORTN_BASE, 0x0C, 0x0C);
+                }
+                if(estado_g2)
+                {
+                    GPIOPinWrite(GPIO_PORTP_BASE, 0x04, 0x04);
+                    GPIOPinWrite(GPIO_PORTA_BASE, 0x80, 0x80);
+                }
+                if(sonando)
+                {
+                    PWMPulseWidthSet(PWM0_BASE, PWM_OUT_5, 30000);
+                }
                 UARTprintf("R\n");
             }
-            continue; // Saltar validaciones y reiniciar bucle
+            continue;
         }
+
 
 // ================= BLOQUEO DE SEGURIDAD =================
         if(emergencia)
         {
-            // Si intenta mandar cualquier comando en estado de emergencia
             UARTprintf("!\n");
-            continue; 
+            continue;
         }
 
 // ================= BLOQUE DE VELOCIDAD =================
@@ -278,21 +250,15 @@ int main(void)
             }
             if(pct > 100) pct = 100;
 
-            // Mapear porcentaje (0 a 100) al rango de ticks del PWM (1 a 60000)
             ancho_pulso_actual = (pct * 60000) / 100;
             if(ancho_pulso_actual == 0) ancho_pulso_actual = 1;
 
-            // Aplicar la nueva velocidad a los motores que estén encendidos
-            if(estado_m1)
-            {
-                PWMPulseWidthSet(PWM0_BASE, PWM_OUT_1, ancho_pulso_actual);
-            }
-            if(estado_m2)
-            {
-                PWMPulseWidthSet(PWM0_BASE, PWM_OUT_4, ancho_pulso_actual);
-            }
+            if(estado_m1) PWMPulseWidthSet(PWM0_BASE, PWM_OUT_1, ancho_pulso_actual);
+            if(estado_m2) PWMPulseWidthSet(PWM0_BASE, PWM_OUT_4, ancho_pulso_actual);
+        
             UARTprintf("Velocidad actualizada a %d%%\n", pct);
         }
+
 
 // ================= BLOQUE DE BUZZER =================
         else if(comparar_cadenas(data, "B"))
@@ -320,7 +286,7 @@ int main(void)
                 PWMPulseWidthSet(PWM0_BASE, PWM_OUT_1, 1);
                 GPIOPinWrite(GPIO_PORTN_BASE, 0x03, 0x00);
             }
-            UARTprintf("Motor 1 (PWM PF1, LEDs PN0 PN1) Alternado\n");
+            UARTprintf("Motor 1 Alternado\n");
         }
         else if(comparar_cadenas(data, "MOTOR2"))
         {
@@ -328,51 +294,59 @@ int main(void)
             if(estado_m2)
             {
                 PWMPulseWidthSet(PWM0_BASE, PWM_OUT_4, ancho_pulso_actual);
-                GPIOPinWrite(GPIO_PORTF_BASE, 0x11, 0x11);
-            }
-            else
-            {
-                PWMPulseWidthSet(PWM0_BASE, PWM_OUT_4, 1);
-                GPIOPinWrite(GPIO_PORTF_BASE, 0x11, 0x00);
-            }
-            UARTprintf("Motor 2 (PWM PG0, LEDs PF0 PF4) Alternado\n");
+                GPIOPinWrite(GPIO_PORTF_BASE, 0x11, 0x11); //0001 0001 11
         }
+        else
+        {
+            PWMPulseWidthSet(PWM0_BASE, PWM_OUT_4, 1);
+            GPIOPinWrite(GPIO_PORTF_BASE, 0x11, 0x00);
+        }
+        UARTprintf("Motor 2 Alternado\n");
+    }
 
 // ================= BLOQUE DE LUCES =================
         else if (comparar_cadenas(data, "G1:ON"))
         {
-            GPIOPinWrite(GPIO_PORTN_BASE, 0x0C, 0x0C); 
+            estado_g1 = true;
+            GPIOPinWrite(GPIO_PORTN_BASE, 0x0C, 0x0C);
             UARTprintf("Comando Ejecutado (G1:ON)\n");
         }
         else if (comparar_cadenas(data, "G1:OFF"))
         {
-            GPIOPinWrite(GPIO_PORTN_BASE, 0x0C, 0x00); 
+            estado_g1 = false;
+            GPIOPinWrite(GPIO_PORTN_BASE, 0x0C, 0x00);
             UARTprintf("Comando Ejecutado (G1:OFF)\n");
         }
         else if (comparar_cadenas(data, "G2:ON"))
         {
-            GPIOPinWrite(GPIO_PORTP_BASE, 0x04, 0x04); 
-            GPIOPinWrite(GPIO_PORTA_BASE, 0x80, 0x80); 
+            estado_g2 = true;
+            GPIOPinWrite(GPIO_PORTP_BASE, 0x04, 0x04);
+            GPIOPinWrite(GPIO_PORTA_BASE, 0x80, 0x80);
             UARTprintf("Comando Ejecutado (G2:ON)\n");
         }
         else if (comparar_cadenas(data, "G2:OFF"))
         {
-            GPIOPinWrite(GPIO_PORTP_BASE, 0x04, 0x00); 
-            GPIOPinWrite(GPIO_PORTA_BASE, 0x80, 0x80); 
+            estado_g2 = false;
+            GPIOPinWrite(GPIO_PORTP_BASE, 0x04, 0x00);
+            GPIOPinWrite(GPIO_PORTA_BASE, 0x80, 0x00);
             UARTprintf("Comando Ejecutado (G2:OFF)\n");
         }
         else if (comparar_cadenas(data, "TRASERO:ON"))
         {
-            GPIOPinWrite(GPIO_PORTN_BASE, 0x0C, 0x0C); 
-            GPIOPinWrite(GPIO_PORTP_BASE, 0x04, 0x04); 
-            GPIOPinWrite(GPIO_PORTA_BASE, 0x80, 0x80); 
+            estado_g1 = true;
+            estado_g2 = true;
+            GPIOPinWrite(GPIO_PORTN_BASE, 0x0C, 0x0C);
+            GPIOPinWrite(GPIO_PORTP_BASE, 0x04, 0x04);
+            GPIOPinWrite(GPIO_PORTA_BASE, 0x80, 0x80);
             UARTprintf("Comando Ejecutado (TRASERO:ON)\n");
         }
         else if (comparar_cadenas(data, "TRASERO:OFF"))
         {
-            GPIOPinWrite(GPIO_PORTN_BASE, 0x0C, 0x00); 
-            GPIOPinWrite(GPIO_PORTP_BASE, 0x04, 0x00); 
-            GPIOPinWrite(GPIO_PORTA_BASE, 0x80, 0x00); 
+            estado_g1 = false;
+            estado_g2 = false;
+            GPIOPinWrite(GPIO_PORTN_BASE, 0x0C, 0x00);
+            GPIOPinWrite(GPIO_PORTP_BASE, 0x04, 0x00);
+            GPIOPinWrite(GPIO_PORTA_BASE, 0x80, 0x00);
             UARTprintf("Comando Ejecutado (TRASERO:OFF)\n");
         }
         else
