@@ -15,26 +15,26 @@
 #include "utils/uartstdio.c"
 
 //*****************************************************************************
-// VARIABLES GLOBALES (Memoria del Vehículo)
+// VARIABLES GLOBALES 
 //*****************************************************************************
 uint32_t ui32SysClock;
 char data[100];
 
-// Memoria de Motores y Velocidad
+// Memoria de Motores
 bool estado_m1 = false;
 bool estado_m2 = false;
 uint32_t ancho_pulso_actual = 45000; // 75% de 60000
 
-// Memoria de Luces y Buzzer (Para restaurar estado)
+// Memoria de Luces y Buzzer
 bool estado_g1 = false;
 bool estado_g2 = false;
 bool sonando = false;
 
-// Bandera de Bloqueo
+// Bandera
 volatile bool emergencia = false;
 
 //*****************************************************************************
-// FUNCION CASERA PARA COMPARAR TEXTO
+// FUNCION COMPARAR TEXTO
 //*****************************************************************************
 bool comparar_cadenas(const char *cadena1, const char *cadena2)
 {
@@ -86,7 +86,7 @@ int main(void)
     IntMasterDisable();
 
 //*****************************************************************************
-// HABILITAR CLOCK (120 MHz)
+// HABILITAR CLOCK
 //*****************************************************************************
     ui32SysClock = SysCtlClockFreqSet((SYSCTL_XTAL_25MHZ |
                                        SYSCTL_OSC_MAIN |
@@ -94,7 +94,7 @@ int main(void)
                                        SYSCTL_CFG_VCO_480), 120000000);
 
 //*****************************************************************************
-// HABILITAR PERIFERICOS (Eliminado TIMER0)
+// HABILITAR PERIFERICOS
 //*****************************************************************************
     SysCtlPeripheralEnable(SYSCTL_PERIPH_UART0);
     while(!SysCtlPeripheralReady(SYSCTL_PERIPH_UART0)) {}
@@ -111,7 +111,7 @@ int main(void)
 
 
 //*****************************************************************************
-// CONFIGURAR PINES Y COMUNICACIONES
+// CONFIGURAR PINES
 //*****************************************************************************
 // Configuración UART0
 
@@ -120,18 +120,18 @@ int main(void)
     GPIOPinTypeUART(GPIO_PORTA_BASE, 0x03);
     UARTStdioConfig(0, 9600, 120000000);
 
-// Configuración PWM0 (Motores y Buzzer)
+// Configuración PWM0
     GPIOPinConfigure(GPIO_PF1_M0PWM1);
     GPIOPinTypePWM(GPIO_PORTF_BASE, 0x02); // PF1 (Motor 1)
 
-    GPIOPinConfigure(GPIO_PG0_M0PWM4);
-    GPIOPinConfigure(GPIO_PG1_M0PWM5);     // PG1 (Buzzer - Rescatado del Datasheet)
+    GPIOPinConfigure(GPIO_PG0_M0PWM4);     // PG0 (Motor 2)
+    GPIOPinConfigure(GPIO_PG1_M0PWM5);     // PG1 (Buzzer)
     GPIOPinTypePWM(GPIO_PORTG_BASE, 0x03); // 0x03 habilita PG0 y PG1
 
 // Configuración GPIO Salidas
     GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, 0x1D); // PF0, PF2, PF3, PF4
     GPIOPinTypeGPIOOutput(GPIO_PORTN_BASE, 0x0F); // PN0, PN1, PN2, PN3
-    GPIOPinTypeGPIOOutput(GPIO_PORTL_BASE, 0x30); // PL4, PL5 (PL0 eliminado)
+    GPIOPinTypeGPIOOutput(GPIO_PORTL_BASE, 0x30); // PL4, PL5 
     GPIOPinTypeGPIOOutput(GPIO_PORTP_BASE, 0x04); // PP2
     GPIOPinTypeGPIOOutput(GPIO_PORTA_BASE, 0x80); // PA7
 
@@ -159,7 +159,7 @@ int main(void)
                                                //0000 0100 4
     GPIOPinWrite(GPIO_PORTL_BASE, 0x30, 0x20);
 
-// PWMs al 0% mecanico / silencio
+// PWMs al 0
     PWMPulseWidthSet(PWM0_BASE, PWM_OUT_1, 1);
     PWMPulseWidthSet(PWM0_BASE, PWM_OUT_4, 1);
     PWMPulseWidthSet(PWM0_BASE, PWM_OUT_5, 1);
@@ -187,7 +187,7 @@ int main(void)
 
             if(emergencia)
             {
-            // APAGAR TODO FÍSICAMENTE (SIN BORRAR LA MEMORIA)
+            // APAGAR TODO FÍSICAMENTE
                 PWMPulseWidthSet(PWM0_BASE, PWM_OUT_1, 1);
                 PWMPulseWidthSet(PWM0_BASE, PWM_OUT_4, 1);
                 PWMPulseWidthSet(PWM0_BASE, PWM_OUT_5, 1); // Silencia buzzer

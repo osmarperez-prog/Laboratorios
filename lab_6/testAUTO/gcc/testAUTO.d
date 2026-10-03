@@ -5,8 +5,8 @@ gcc/testAUTO.o: testAUTO.c \
  ../../../../../inc/hw_types.h ../../../../../driverlib/debug.h \
  ../../../../../driverlib/gpio.h ../../../../../driverlib/pin_map.h \
  ../../../../../driverlib/sysctl.h ../../../../../driverlib/pwm.h \
- ../../../../../driverlib/uart.h ../../../../../driverlib/timer.h \
- ../../../../../driverlib/interrupt.h ../../../../../utils/uartstdio.c \
+ ../../../../../driverlib/uart.h ../../../../../utils/uartstdio.c \
  /usr/lib/gcc/arm-none-eabi/14.2.1/include/stdarg.h \
- ../../../../../inc/hw_uart.h ../../../../../driverlib/rom.h \
- ../../../../../driverlib/rom_map.h ../../../../../utils/uartstdio.h
+ ../../../../../inc/hw_uart.h ../../../../../driverlib/interrupt.h \
+ ../../../../../driverlib/rom.h ../../../../../driverlib/rom_map.h \
+ ../../../../../utils/uartstdio.h
