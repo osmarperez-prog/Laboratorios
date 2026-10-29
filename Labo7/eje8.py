@@ -1,41 +1,52 @@
 import cv2
 
-class ConvertirColor:
+def detectar_color(img):
 
-    def __init__(self, img):
-        self.img = img
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
-    def convertir_rgb(self):
-        rgb = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
-        return rgb
+    rojo1 = cv2.inRange(hsv, (0, 100, 100), (10, 255, 255))
+    rojo2 = cv2.inRange(hsv, (170, 100, 100), (179, 255, 255))
+    rojo = rojo1 | rojo2
 
-    def convertir_hsv(self):
-        hsv = cv2.cvtColor(self.img, cv2.COLOR_BGR2HSV)
-        return hsv
+    verde = cv2.inRange(hsv, (30, 50, 40), (90, 255, 255))
 
-    def convertir_gris(self):
-        gris = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
-        return gris
+    azul = cv2.inRange(hsv, (100, 100, 100), (130, 255, 255))
+
+    return rojo, verde, azul
 
 
 if __name__ == "__main__":
 
     img = cv2.imread("colors/rojo.jpeg")
 
-    color = ConvertirColor(img)
+    if img is None:
+        print("Error al cargar la imagen")
 
-    rgb = color.convertir_rgb()
-    hsv = color.convertir_hsv()
-    gris = color.convertir_gris()
+    else:
+        rojo, verde, azul = detectar_color(img)
 
-    print("RGB:", rgb[0, 0])
-    print("HSV:", hsv[0, 0])
-    print("GRIS:", gris[0, 0])
+        print("Pixeles rojos:", cv2.countNonZero(rojo))
+        print("Pixeles verdes:", cv2.countNonZero(verde))
+        print("Pixeles azules:", cv2.countNonZero(azul))
 
-    cv2.imshow("Imagen original", img)
-    cv2.imshow("Imagen RGB", cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
-    cv2.imshow("Imagen HSV", cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR))
-    cv2.imshow("Imagen gris", gris)
+        if cv2.countNonZero(rojo) > 0:
+            print("Color rojo detectado")
 
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+        if cv2.countNonZero(verde) > 0:
+            print("Color verde detectado")
+
+        if cv2.countNonZero(azul) > 0:
+            print("Color azul detectado")
+
+        imagen_rojo = cv2.bitwise_and(img, img, mask=rojo)
+        imagen_verde = cv2.bitwise_and(img, img, mask=verde)
+        imagen_azul = cv2.bitwise_and(img, img, mask=azul)
+
+        cv2.imshow("Imagen original", img)
+
+        cv2.imshow("Color rojo", imagen_rojo)
+        cv2.imshow("Color verde", imagen_verde)
+        cv2.imshow("Color azul", imagen_azul)
+
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()

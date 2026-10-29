@@ -1,52 +1,38 @@
 import cv2
 
-def detectar_color(img):
-
-    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-
-    rojo1 = cv2.inRange(hsv, (0, 100, 100), (10, 255, 255))
-    rojo2 = cv2.inRange(hsv, (170, 100, 100), (179, 255, 255))
-    rojo = rojo1 | rojo2
-
-    verde = cv2.inRange(hsv, (30, 50, 40), (90, 255, 255))
-
-    azul = cv2.inRange(hsv, (100, 100, 100), (130, 255, 255))
-
-    return rojo, verde, azul
-
-
 if __name__ == "__main__":
 
-    img = cv2.imread("colors/rojo.jpeg")
+    camara = cv2.VideoCapture(0)
 
-    if img is None:
-        print("Error al cargar la imagen")
+    modo = "RGB"
 
-    else:
-        rojo, verde, azul = detectar_color(img)
+    while True:
 
-        print("Pixeles rojos:", cv2.countNonZero(rojo))
-        print("Pixeles verdes:", cv2.countNonZero(verde))
-        print("Pixeles azules:", cv2.countNonZero(azul))
+        check, frame = camara.read()
 
-        if cv2.countNonZero(rojo) > 0:
-            print("Color rojo detectado")
+        if not check:
+            print("Error al leer la camara")
+            break
 
-        if cv2.countNonZero(verde) > 0:
-            print("Color verde detectado")
+        if modo == "GRIS":
+            imagen = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-        if cv2.countNonZero(azul) > 0:
-            print("Color azul detectado")
+        elif modo == "RGB":
+            imagen = frame
 
-        imagen_rojo = cv2.bitwise_and(img, img, mask=rojo)
-        imagen_verde = cv2.bitwise_and(img, img, mask=verde)
-        imagen_azul = cv2.bitwise_and(img, img, mask=azul)
+        cv2.imshow("Camara", imagen)
 
-        cv2.imshow("Imagen original", img)
+        tecla = cv2.waitKey(1) & 0xFF
 
-        cv2.imshow("Color rojo", imagen_rojo)
-        cv2.imshow("Color verde", imagen_verde)
-        cv2.imshow("Color azul", imagen_azul)
+        if tecla == ord("g"):
+            modo = "GRIS"
 
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        elif tecla == ord("r"):
+            modo = "RGB"
+
+        elif tecla == 27:
+            break
+
+    camara.release()
+
+    cv2.destroyAllWindows()

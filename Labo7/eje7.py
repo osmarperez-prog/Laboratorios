@@ -1,26 +1,41 @@
 import cv2
 
-def convertir_gris(img):
-    gris = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    return gris
+class ConvertirColor:
+
+    def __init__(self, img):
+        self.img = img
+
+    def convertir_rgb(self):
+        rgb = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
+        return rgb
+
+    def convertir_hsv(self):
+        hsv = cv2.cvtColor(self.img, cv2.COLOR_BGR2HSV)
+        return hsv
+
+    def convertir_gris(self):
+        gris = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
+        return gris
+
 
 if __name__ == "__main__":
 
-    rojo = cv2.imread("colors/rojo.jpeg")
-    verde = cv2.imread("colors/verde.jpg")
-    azul = cv2.imread("colors/azul.jpg")
+    img = cv2.imread("colors/rojo.jpeg")
 
-    gris_rojo = convertir_gris(rojo)
-    gris_verde = convertir_gris(verde)
-    gris_azul = convertir_gris(azul)
+    color = ConvertirColor(img)
 
-    print("Rojo en gris:", gris_rojo[0, 0])
-    print("Verde en gris:", gris_verde[0, 0])
-    print("Azul en gris:", gris_azul[0, 0])
+    rgb = color.convertir_rgb()
+    hsv = color.convertir_hsv()
+    gris = color.convertir_gris()
 
-    cv2.imshow("Rojo en gris", gris_rojo)
-    cv2.imshow("Verde en gris", gris_verde)
-    cv2.imshow("Azul en gris", gris_azul)
+    print("RGB:", rgb[0, 0])
+    print("HSV:", hsv[0, 0])
+    print("GRIS:", gris[0, 0])
+
+    cv2.imshow("Imagen original", img)
+    cv2.imshow("Imagen RGB", cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
+    cv2.imshow("Imagen HSV", cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR))
+    cv2.imshow("Imagen gris", gris)
 
     cv2.waitKey(0)
     cv2.destroyAllWindows()
