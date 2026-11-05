@@ -49,7 +49,7 @@ if __name__ == "__main__":
             if not check:
                 break
 
-            img_resize = resize_img(frame, 400, 600)
+            img_resize = resize_img(frame, 600, 400)
 
             bordes = detectar_bordes(img_resize)
 
